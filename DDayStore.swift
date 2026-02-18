@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import WidgetKit // 위젯 새로고침을 위해 필요합니다.
 
 /// [2단계] 데이터 저장소 구현
 /// 앱의 데이터를 폰에 저장하고, 다시 불러오는 '창고' 역할을 하는 클래스입니다.
@@ -15,21 +16,32 @@ class DDayStore: ObservableObject {
     // 데이터 저장 위치의 이름 (열쇠 이름)
     private let saveKey = "dday_list"
     
+    // 중요: 앱과 위젯이 데이터를 공유하기 위한 그룹 ID입니다.
+    // 'group.com.yourname.dday' 형식으로 나중에 Xcode에서 설정해야 합니다.
+    private let appGroupID = "group.com.soyoung.dday" 
+    
+    private var sharedDefaults: UserDefaults? {
+        UserDefaults(suiteName: appGroupID)
+    }
+    
     init() {
         // 앱이 시작될 때 저장된 데이터를 불러옵니다.
         loadItems()
     }
     
-    /// 데이터를 폰(UserDefaults)에 저장합니다.
+    /// 데이터를 폰(App Group 공유 영역)에 저장합니다.
     private func saveItems() {
         if let encoded = try? JSONEncoder().encode(items) {
-            UserDefaults.standard.set(encoded, forKey: saveKey)
+            sharedDefaults?.set(encoded, forKey: saveKey)
+            
+            // 위젯에게 데이터가 바뀌었으니 새로고침하라고 알려줍니다.
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
     
     /// 저장된 데이터를 불러옵니다.
     private func loadItems() {
-        if let data = UserDefaults.standard.data(forKey: saveKey),
+        if let data = sharedDefaults?.data(forKey: saveKey),
            let decoded = try? JSONDecoder().decode([DDay].self, from: data) {
             self.items = decoded
         }
